@@ -1,0 +1,112 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "Usage: ${0##*/} <Exercise#|Project#>" 1>&2
+    exit 1
+fi
+
+# Assign args
+assignment=$1
+
+# Other useful vars
+# remote
+cpe357="/home/kmammen-grader/evaluations/S21/357"
+
+core="$cpe357/$assignment/tests/core"
+feature="$cpe357/$assignment/tests/feature"
+cpu="$cpe357/$assignment/cpu"
+heap="$cpe357/$assignment/heap"
+
+# local
+cpe357_loc="/home/bsilton/cpe357"
+
+assignment_loc="$cpe357_loc/$assignment"
+core_loc="$assignment_loc/desc/core"
+feature_loc="$assignment_loc/desc/feature"
+cpu_loc="$assignment_loc/desc/cpu"
+heap_loc="$assignment_loc/desc/heap"
+
+# echos for variable verification
+#echo $cpe357
+#echo $core
+#echo $feature
+#echo $cpe357_loc
+#echo $assignment_loc
+#echo $core_loc
+#echo $feature_loc
+
+if [ -d "$core" ]; then # if there's a directory for core tests...
+    echo "Copying core test descriptions to $core_loc... "
+    rm -f $core_loc/all # removing 'all' file since we're gonna be appending to it
+    for test in $core/test*; do
+        # we'd want to make sure that the test directory even exists
+        if [ -d "$test" ]; then
+            # setting $name here for ease of reading; should just be "test<#>"
+            name=${test##*/}
+            printf "$name\n"
+
+            # replaces above while loop from first version of the script
+            mkdir -p $core_loc
+            cat $test/description > $core_loc/$name
+
+            # appending test to 'all' file
+            printf "                     ========== $name ==========\n" >> $core_loc/all
+            cat $test/description >> $core_loc/all
+            printf "\n" >> $core_loc/all
+        fi
+    done
+else
+    printf "No core tests found.\n"
+fi
+
+if [ -d "$feature" ]; then
+    echo "Copying feature test descriptions to $feature_loc... "
+    rm -f $feature_loc/all
+    for test in $feature/test*; do
+        if [ -d "$test" ]; then
+            name=${test##*/}
+            printf "$name\n"
+
+            mkdir -p $feature_loc
+            cat $test/description > $feature_loc/$name
+
+            printf "                     ========== $name ==========\n" >> $feature_loc/all
+            cat $test/description >> $feature_loc/all
+            printf "\n" >> $feature_loc/all
+        fi
+    done
+else
+    printf "No feature tests found.\n"
+fi
+
+if [ -d "$cpu" ]; then
+    echo "Copying cpu test descriptions to $cpu_loc... "
+    for test in $cpu/test*; do
+        if [ -d "$test" ]; then
+            name=${test##*/}
+            printf "$name\n"
+
+            mkdir -p $cpu_loc/$name
+            cat $test/description > $cpu_loc/$name/description
+            cat $test/expect.cpu > $cpu_loc/$name/expect.cpu
+        fi
+    done
+else
+    printf "No cpu tests found.\n"
+fi
+
+if [ -d "$heap" ]; then
+    echo "Copying heap test descriptions to $heap_loc..."
+    for test in $heap/test*; do
+        if [ -d "$test" ]; then
+            name=${test##*/}
+            printf "$name\n"
+
+            mkdir -p $heap_loc/${test##*/}
+            cat $test/description > $heap_loc/${test##*/}/description
+            cat $test/expect.heap > $heap_loc/${test##*/}/expect.heap
+        fi
+    done
+else
+    printf "No heap tests found.\n"
+fi
