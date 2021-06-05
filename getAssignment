@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Assumes file structure is organized a certain way, ymmv
+
+if [ $# -eq 0 ]; then
+    echo "Usage: ${0##*/} <Exercise#|Project#>" 1>&2
+    exit 1
+fi
+
+assignment=$1
+
+if [ -d ~/cpe357/$assignment ]; then
+    echo "~/cpe357/$assignment directory already exists"
+else
+    mkdir ~/cpe357/$assignment
+    echo "Created ~/cpe357/$assignment/"
+fi
+
+cp ~kmammen-grader/evaluations/S21/357/$assignment/Makefile ~/cpe357/$assignment/.
+echo "Copied Makefile"
+
+cp ~kmammen-grader/evaluations/S21/357/$assignment/requirements ~/cpe357/$assignment/.
+echo "Copied requirements"
+
+getTests $assignment
