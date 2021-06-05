@@ -1,0 +1,115 @@
+#!/bin/bash
+# Written by Blake Silton 02/2021
+
+printUsage() {
+    printf "Usage: runComplexity.sh [-q] [-v] files\n" 1>&2
+}
+
+printHelp() {
+    printf "%7s    %-64s\n%7s    %-64s\n" \
+        "-q" "Prints values with high precision and no labels" \
+        "-v" "Prints regular complexity output before calculations" \
+        1>&2
+}
+
+verbose=false
+quiet=false
+while getopts ":qv" opt; do
+    case ${opt} in
+        q  )
+            quiet=true
+            ;;
+        v  )
+            verbose=true
+            ;;
+        \? )
+            printUsage
+            printHelp
+            exit 1
+            ;;
+    esac
+done
+shift "$((OPTIND - 1))"
+
+if [ $# -eq 0 ]; then
+    printf "runComplexity: missing file operand(s)\n"
+    exit 1
+fi
+
+# If verbose, output complexity first, then tack on calculations at the bottom
+# "$@" gets all command line args as an array
+if [ $verbose == true ]; then
+    complexity -t0 -s1 "$@"
+    printf "\n"
+fi
+
+total=0
+topQuartile=0
+
+# Loading each line of complexity (-H for no header) into an array
+lines="$(complexity -t0 -s1 -H "$@")"
+readarray -t lines <<< "$lines"
+
+# number of funcs is the length of the array
+numfuncs=${#lines[@]}
+
+# Using python for float math
+quartile=`python -c "print float($numfuncs) / 4"`
+
+# Basically parsing each line in the array and replacing it with the first
+# integer found, i.e. the function complexity
+for i in ${!lines[@]}; do
+    lines[$i]=$(echo "${lines[$i]}" | grep -oP '^[^0-9]*\K[0-9]+')
+    (( total += "${lines[$i]}" ))
+done
+
+# Adding up the integer portion of the top quartile
+# (i.e., if the quartile is 2.75, we're adding up the complexities of the two
+# most complex functions)
+for (( i=-1; i>="-${quartile%.*}"; i-- )); do
+    (( topQuartile += "${lines[$i]}" ))
+done
+
+# This is basically the next lowest integer below negative $quartile, used to
+# negative index into the array of func complexities and calculate the ratio
+#
+# e.g., if $quartile is 5.6, $negativeIndex should be -6 (next int below -5.6)
+#
+# Worth noting that this returns the WRONG index (off by -1) if $quartile is an
+# integer, but since
+#     1) we multiply the func complexity at that index by the
+#        fractional digits of the quartile; and
+#     2) integers by definition have no fractional digits,
+# the error gets multiplied by 0 in the calculations and it all works out
+negativeIndex=0
+(( negativeIndex = "-${quartile%.*}" - 1 ))
+
+# Subtracting the integer component of $quartile to get to the fractional digits
+# (which, again, is 0 if $quartile is an integer)
+quartileFractional=`python -c "print $quartile - ${quartile%.*}"`
+
+# Calculating the float portion of the topQuartile (i.e., if the quartile
+# is 2.75, we're adding the 0.75*complexity of the 3rd most complex function)
+#
+# If $quartile is an integer, $quartileFractional == 0,
+# so $topQuartile remains unchanged
+topQuartile=`python -c "print $topQuartile + ($quartileFractional * ${lines[${negativeIndex}]})"`
+
+# Calculating the ratio and average, pretty self-explanatory
+ratio=`python -c "print float($topQuartile)/$total"`
+avg=`python -c "print float($total)/$numfuncs"`
+
+# If quiet, just output raw complexity numbers
+if [ $quiet == true ]; then
+    printf "%d\n%d\n%f\n%f\n" $total ${lines[-1]} $avg $ratio
+# Otherwise, output formatted complexity numbers with labels
+else
+    printf "%12s: %d\n%12s: %.2f\n%12s: %.2f\n\n%12s: %d\n%12s: %d\n%12s: %.2f\n%12s: %.2f\n" \
+        "Functions" $numfuncs \
+        "Quartile" $quartile \
+        "Top Quartile" $topQuartile \
+        "Total" $total \
+        "Max" ${lines[-1]} \
+        "Average" $avg \
+        "Ratio" $ratio
+fi
