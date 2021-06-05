@@ -1,0 +1,17 @@
+!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "No test provided."
+else
+    name=${1%.*}
+    nameLoc=test/$name
+
+    printf "diff ==> ${name##*/}.out <==>  ${name##*/}.expect <==\n"
+    diff $nameLoc.out $nameLoc.expect
+
+    printf "\ndiff ==> ${name##*/}.err <==> ${name##*/}.experr <==\n"
+    diff $nameLoc.err $nameLoc.experr
+   
+    printf "\ndiff ==> ${name##*/}.exitcode <==> ${name##*/}.expexitcode <==\n"
+    diff $nameLoc.exitcode $nameLoc.expexitcode
+fi
