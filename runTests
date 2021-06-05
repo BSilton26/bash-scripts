@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "No path provided for expected output creation."
+else
+    echo "Creating expected outputs..."
+    for testInput in test/*.in; do
+        # Strip off the file extension, i.e., the ".in"
+        name=${testInput%.in}
+
+        # Run tests against reference solution and direct output to .expect file
+        $1 < $testInput 1>$name.expect 2>$name.experr
+        echo "$?" 1>$name.expexitcode
+    done
+fi
+
+echo "Generating outputs and diffing results..."
+
+for testInput in test/*.in; do
+    # Strip off the file extension, i.e., the ".in"
+    name=${testInput%.in}
+
+    # Run the test
+    # printf "\n-> Running ${name##*/}..."
+    ./a.out < $testInput 1>$name.out 2>$name.err
+    echo "$?" 1>$name.exitcode
+
+    # diff the results
+    # printf "\n-> Diffing ${name##*/}...\n"
+    diff -q $name.out $name.expect
+    diff -q $name.err $name.experr
+    diff -q $name.exitcode $name.expexitcode
+done
+echo "Done!"
